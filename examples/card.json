@@ -1,0 +1,9 @@
+{
+  "operations": [
+    {"op":"create","type":"FRAME","ref":"card","props":{"name":"Local Bridge Demo","width":400,"height":260,"cornerRadius":24,"fills":[{"type":"SOLID","color":{"r":0.95,"g":0.96,"b":1}}]}},
+    {"op":"create","type":"TEXT","parentId":"$card","ref":"title","props":{"name":"Title","characters":"Hello from Codex","fontName":{"family":"Inter","style":"Bold"},"fontSize":30,"x":28,"y":36}},
+    {"op":"create","type":"TEXT","parentId":"$card","props":{"characters":"Editable Figma nodes. Local connection.","fontSize":16,"x":28,"y":94}},
+    {"op":"create","type":"RECTANGLE","parentId":"$card","ref":"button","props":{"name":"Button","x":28,"y":158,"width":344,"height":64,"cornerRadius":16,"fills":[{"type":"SOLID","color":{"r":0.19,"g":0.37,"b":0.98}}]}},
+    {"op":"select","nodeIds":["$card"]}
+  ]
+}

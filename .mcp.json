@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "figma-local-bridge": {
+      "command": "node",
+      "args": ["./server/mcp.mjs"],
+      "cwd": "."
+    }
+  }
+}

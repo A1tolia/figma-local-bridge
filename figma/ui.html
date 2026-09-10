@@ -1,0 +1,61 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8">
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px;font:13px/1.6 Inter,system-ui,sans-serif;background:var(--figma-color-bg,#fafafa);color:var(--figma-color-text,#20232a)}h1{font-size:21px;letter-spacing:-.6px;margin:0 0 5px}p{color:var(--figma-color-text-secondary,#68717d);margin:8px 0 18px}label{display:block;font-weight:600;margin:14px 0 6px}input{width:100%;padding:10px;border:1px solid #b9c1cb;border-radius:8px;background:var(--figma-color-bg,#fff);color:inherit}button{padding:11px 16px;border:0;border-radius:8px;cursor:pointer;font-weight:600;background:#315efb;color:white;margin:16px 8px 0 0}button:disabled{opacity:.4;cursor:default}#disconnect{background:#e9edf5;color:#24334b}#status{padding:12px;border-radius:8px;background:var(--figma-color-bg-secondary,#edf1f6);margin-top:18px;overflow-wrap:anywhere;white-space:pre-wrap;font-size:12px}.badge{font-size:10px;color:#315efb;letter-spacing:1.5px;font-weight:700;margin-bottom:8px}
+</style>
+<div class="badge">LOCAL CONNECTION</div><h1>Figma Local Bridge</h1><p>让本机 Codex 编辑当前文件。打开桥接服务后，粘贴终端显示的配对码。</p>
+<label for="token">本次启动的配对码</label><input id="token" type="password" autocomplete="off" placeholder="粘贴配对码">
+<button id="connect">连接当前文件</button><button id="disconnect" disabled>断开</button>
+<div id="status" role="status">未连接 · 仅访问 localhost:19429</div>
+<p style="font-size:11px;margin-top:16px">连接期间允许本机编辑；关闭窗口即可停止接收操作。编辑后可在 Figma 撤销。新建顶层文件需先在 Figma 中完成。</p>
+<script>
+const base='http://localhost:19429';
+let active=false,sessionToken='',sessionId='',fileInfo={},waiting=null,inFlight=false;
+const handshakeId=Array.from(crypto.getRandomValues(new Uint8Array(16)),v=>v.toString(16).padStart(2,'0')).join('');
+const el=id=>document.getElementById(id),status=text=>el('status').textContent=text;
+function buttons(){el('connect').disabled=active||inFlight||!fileInfo.name;el('disconnect').disabled=!active||inFlight;el('token').disabled=active;}
+async function post(route,data,token=sessionToken) {
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);
+  try {const res=await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(data),signal:controller.signal});const out=await res.json();if(!res.ok)throw new Error(out.error||'连接失败');return out;}
+  finally{clearTimeout(timer);}
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+window.onmessage=event=>{
+  // Figma can relay native messages without event.source === parent.
+  // Authenticate the handshake with an unpredictable nonce and results by job ID.
+  const msg=event.data && event.data.pluginMessage;if(!msg || typeof msg!=='object')return;
+  if(msg.type==='info' && msg.handshakeId===handshakeId){fileInfo={...msg,name:msg.name||'未命名文件'};buttons();if(!active)status('Figma 已就绪 · '+fileInfo.name);}
+  if(msg.type==='result'&&waiting&&msg.id===waiting.id){waiting.resolve(msg);waiting=null;}
+};
+buttons();
+parent.postMessage({pluginMessage:{type:'info',handshakeId}},'*');
+const handshakeRetry=setInterval(()=>{if(fileInfo.name){clearInterval(handshakeRetry);return;}parent.postMessage({pluginMessage:{type:'info',handshakeId}},'*');},1000);
+setTimeout(()=>{clearInterval(handshakeRetry);if(!fileInfo.name)status('未收到 Figma 主线程响应。请关闭插件后重新运行，确认 code.js 和 ui.html 均为最新版本。');},10000);
+async function loop() {
+  const ownSession=sessionId,ownToken=sessionToken;
+  let failures=0;
+  while(active && sessionId===ownSession) {
+    try {
+      const {job}=await post('/poll',{});failures=0;
+      if(!active || sessionId!==ownSession){if(job)await post('/result',{id:job.id,error:'Disconnected before execution'},ownToken);break;}
+      if(!job){await sleep(600);continue;}
+      inFlight=true;buttons();status('执行中 · '+job.action+'\n'+fileInfo.name);
+      const result=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{waiting=null;reject(new Error('Figma 响应超时，任务 '+job.id+' 的执行结果未确认，请勿重复提交。'));},15000);waiting={id:job.id,resolve:value=>{clearTimeout(timer);resolve(value);}};parent.postMessage({pluginMessage:{type:'execute',...job}},'*');});
+      let delivered=false;
+      for(let retry=0;retry<3;retry++){try{await post('/result',result);delivered=true;break;}catch{await sleep(800);}}
+      inFlight=false;buttons();
+      if(!delivered){active=false;status('结果回传失败，已停止接收操作。请先检查画布及任务 '+job.id+'，不要重复提交。');break;}
+      status((result.error||result.result?.ok===false?'执行有错误，请检查结果':'已连接 · '+fileInfo.name)+'\n会话 '+sessionId);
+    }catch(e){failures++;status('连接中断：'+e.message);if(inFlight){inFlight=false;active=false;break;}if(failures>=3){active=false;break;}await sleep(1500);}
+  }
+  buttons();
+}
+el('connect').onclick=async()=>{
+  el('connect').disabled=true;
+  try {
+    const code=el('token').value.trim();if(!code)throw new Error('请先填写配对码');
+    const data=await post('/connect',fileInfo,code);sessionToken=data.sessionToken;sessionId=data.sessionId;
+    active=true;buttons();status('已连接 · '+fileInfo.name+'\n会话 '+sessionId);loop();
+  }catch(e){status(e.message);buttons();}
+};
+el('disconnect').onclick=async()=>{active=false;try{await post('/disconnect',{});}catch{}sessionToken='';sessionId='';status('已断开');buttons();};
+</script></html>

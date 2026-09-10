@@ -1,0 +1,20 @@
+{
+  "name": "figma-local-bridge",
+  "version": "1.0.3",
+  "description": "Edit an open Figma file through an authenticated local Plugin API bridge.",
+  "license": "MIT",
+  "author": {
+    "name": "Figma Local Bridge contributors"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Figma Local Bridge",
+    "shortDescription": "通过本机连接创建和修改 Figma 设计内容。",
+    "longDescription": "连接当前打开的 Figma 文件，创建和编辑页面、Frame、文字、形状与组件。不调用官方 Figma MCP 服务。",
+    "developerName": "Figma Local Bridge contributors",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Help me use Figma Local Bridge."
+  },
+  "mcpServers": "./.mcp.json"
+}
