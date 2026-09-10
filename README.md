@@ -4,6 +4,9 @@
 
 > 本项目与 Figma 或 OpenAI 无隶属、授权或背书关系。Figma 是其各自权利人的商标。
 
+[![CI](https://github.com/A1tolia/figma-local-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/A1tolia/figma-local-bridge/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **v1.0.3 更新**：增加安全区适配所需的固定/自动布局定位、伸缩、约束和滚动方向属性，并在文档读取结果中返回这些布局信息。
 
 **v1.0.2 更新**：修订 Figma 主线程与界面之间的消息握手，处理文件名 undefined、连接后无结果的情况。原目录已更新，关闭并重新运行插件，再输入现有桥接配对码；无需停止现有桥接。界面应先显示“Figma 已就绪 · 文件名”，才能连接。若没有出现文件名，不要提交编辑操作。真实 Figma 执行效果仍待重新连接验证。

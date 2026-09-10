@@ -3,6 +3,11 @@
   "version": "1.0.3",
   "description": "Authenticated local bridge for editing open Figma files from MCP clients.",
   "license": "MIT",
+  "homepage": "https://github.com/A1tolia/figma-local-bridge#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/A1tolia/figma-local-bridge.git"
+  },
   "private": true,
   "type": "module",
   "engines": {
