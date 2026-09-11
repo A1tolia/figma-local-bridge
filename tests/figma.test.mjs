@@ -6,7 +6,7 @@ const code=await readFile(new URL('../figma/code.js',import.meta.url),'utf8');
 function sandbox() {
   let next=0,undo=0;const nodes=new Map(),fonts=[];
   function node(type){
-    const n={id:String(++next),type,name:type,removed:false,x:0,y:0,width:100,height:100,fills:[],cornerRadius:0,
+    const n={id:String(++next),type,name:type,removed:false,x:0,y:0,width:100,height:100,fills:[],strokes:[],strokeWeight:1,cornerRadius:0,effects:[],
       layoutPositioning:'AUTO',layoutGrow:0,layoutAlign:'INHERIT',constraints:{horizontal:'MIN',vertical:'MIN'},overflowDirection:'NONE',clipsContent:false,
       resize(w,h){this.width=w;this.height=h;},remove(){this.removed=true;if(this.parent)this.parent.children=this.parent.children.filter(n=>n!==this);}};
     if(['PAGE','FRAME','COMPONENT'].includes(type)){n.children=[];n.appendChild=function(child){if(child.parent)child.parent.children=child.parent.children.filter(n=>n!==child);this.children.push(child);child.parent=this;};n.loadAsync=async()=>{};}
@@ -54,4 +54,14 @@ test('safe-area layout and scroll properties can be updated and inspected',async
   assert.equal(r.ok,true);assert.equal(frame.height,778);assert.equal(frame.layoutGrow,1);assert.equal(frame.clipsContent,true);assert.equal(frame.overflowDirection,'VERTICAL');
   const doc=await s.run('document',{nodeId:frame.id,depth:0});
   assert.equal(doc.tree.overflowDirection,'VERTICAL');assert.equal(doc.tree.layoutGrow,1);
+});
+test('native glass effects are validated, applied, and exposed in snapshots',async()=>{
+  const s=sandbox(),frame=s.figma.createFrame();
+  const glass={type:'GLASS',visible:true,radius:16,refraction:0.25,depth:41,lightAngle:-45,lightIntensity:0.8,dispersion:0.16};
+  const r=await s.run('apply',{operations:[{op:'update',nodeId:frame.id,props:{effects:[glass]}}]});
+  assert.equal(r.ok,true);assert.deepEqual(frame.effects,[glass]);
+  const doc=await s.run('document',{nodeId:frame.id,depth:0});
+  assert.equal(doc.tree.effects[0].type,'GLASS');assert.equal(doc.tree.effects[0].depth,41);
+  const invalid=await s.run('apply',{operations:[{op:'update',nodeId:frame.id,props:{effects:[{...glass,refraction:2}]}}]});
+  assert.equal(invalid.ok,false);assert.equal(frame.effects[0].refraction,0.25);
 });

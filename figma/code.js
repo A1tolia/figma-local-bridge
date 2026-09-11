@@ -1,9 +1,9 @@
 /* Runs only inside Figma's Plugin API sandbox. No eval or remote scripts. */
-const allowed = new Set('name x y width height fills strokes strokeWeight cornerRadius opacity visible locked rotation characters fontName fontSize textAlignHorizontal textAutoResize layoutMode itemSpacing paddingTop paddingBottom paddingLeft paddingRight primaryAxisSizingMode counterAxisSizingMode primaryAxisAlignItems counterAxisAlignItems clipsContent layoutPositioning layoutGrow layoutAlign constraints overflowDirection'.split(' '));
+const allowed = new Set('name x y width height fills strokes strokeWeight cornerRadius effects opacity visible locked rotation characters fontName fontSize textAlignHorizontal textAutoResize layoutMode itemSpacing paddingTop paddingBottom paddingLeft paddingRight primaryAxisSizingMode counterAxisSizingMode primaryAxisAlignItems counterAxisAlignItems clipsContent layoutPositioning layoutGrow layoutAlign constraints overflowDirection'.split(' '));
 function snapshot(node,depth,budget) {
   if (budget.count++ >= 500) return {id:node.id,truncated:true};
   const out={id:node.id,type:node.type,name:node.name};
-  for(const key of ['x','y','width','height','characters','layoutMode','fontSize','fontName','fills','layoutPositioning','layoutGrow','layoutAlign','constraints','overflowDirection','clipsContent','paddingTop','paddingBottom','paddingLeft','paddingRight','primaryAxisSizingMode','counterAxisSizingMode','itemSpacing','visible']) if(key in node && typeof node[key]!=='symbol')out[key]=node[key];
+  for(const key of ['x','y','width','height','characters','layoutMode','fontSize','fontName','fills','strokes','strokeWeight','cornerRadius','effects','layoutPositioning','layoutGrow','layoutAlign','constraints','overflowDirection','clipsContent','paddingTop','paddingBottom','paddingLeft','paddingRight','primaryAxisSizingMode','counterAxisSizingMode','itemSpacing','visible']) if(key in node && typeof node[key]!=='symbol')out[key]=node[key];
   if(depth>0 && 'children' in node) {
     out.children=[];
     for(const child of node.children) {if(budget.count>=500){out.truncated=true;break;}out.children.push(snapshot(child,depth-1,budget));}
@@ -26,6 +26,19 @@ async function patch(node,props) {
   }
   for(const key of ['width','height']) if(key in props && (!Number.isFinite(props[key]) || props[key]<=0 || props[key]>100000))throw new Error('Invalid '+key);
   if('characters' in props && typeof props.characters!=='string')throw new Error('characters must be a string');
+  if('effects' in props) {
+    if(!Array.isArray(props.effects))throw new Error('effects must be an array');
+    for(const effect of props.effects) {
+      if(!effect || typeof effect!=='object')throw new Error('Each effect must be an object');
+      if(!['DROP_SHADOW','INNER_SHADOW','LAYER_BLUR','BACKGROUND_BLUR','NOISE','TEXTURE','GLASS'].includes(effect.type))throw new Error('Unsupported effect type: '+effect.type);
+      if(effect.type==='GLASS') {
+        for(const key of ['lightIntensity','refraction','dispersion'])if(!Number.isFinite(effect[key])||effect[key]<0||effect[key]>1)throw new Error('Invalid GLASS '+key);
+        if(!Number.isFinite(effect.lightAngle))throw new Error('Invalid GLASS lightAngle');
+        if(!Number.isFinite(effect.depth)||effect.depth<1)throw new Error('Invalid GLASS depth');
+        if(!Number.isFinite(effect.radius)||effect.radius<0)throw new Error('Invalid GLASS radius');
+      }
+    }
+  }
   if(node.type==='TEXT' && ['characters','fontName','fontSize','textAutoResize','width','height'].some(k=>k in props)) {
     const fonts=node.characters.length?node.getRangeAllFontNames(0,node.characters.length):[node.fontName];
     for(const font of fonts)if(typeof font!=='symbol')await figma.loadFontAsync(font);

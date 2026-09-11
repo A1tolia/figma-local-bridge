@@ -1,6 +1,6 @@
 {
   "name": "figma-local-bridge",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Authenticated local bridge for editing open Figma files from MCP clients.",
   "license": "MIT",
   "homepage": "https://github.com/A1tolia/figma-local-bridge#readme",

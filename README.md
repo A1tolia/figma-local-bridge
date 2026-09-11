@@ -7,6 +7,8 @@
 [![CI](https://github.com/A1tolia/figma-local-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/A1tolia/figma-local-bridge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**v1.0.4 更新**：`figma_local_document` 现在返回描边、圆角和效果信息；`figma_local_apply` 新增 `effects` 写入，并校验 Figma 原生 `GLASS` 效果的光照、折射、深度、色散与半径参数。
+
 **v1.0.3 更新**：增加安全区适配所需的固定/自动布局定位、伸缩、约束和滚动方向属性，并在文档读取结果中返回这些布局信息。
 
 **v1.0.2 更新**：修订 Figma 主线程与界面之间的消息握手，处理文件名 undefined、连接后无结果的情况。原目录已更新，关闭并重新运行插件，再输入现有桥接配对码；无需停止现有桥接。界面应先显示“Figma 已就绪 · 文件名”，才能连接。若没有出现文件名，不要提交编辑操作。真实 Figma 执行效果仍待重新连接验证。
@@ -17,7 +19,7 @@
 
 ## 能力与边界
 
-支持读取页面结构和选区；创建页面、Frame、矩形、椭圆、可编辑文字和组件；修改位置、尺寸、填色、文字、字体及基础自动布局；复制和删除普通节点；选择定位；导出 PNG / SVG。
+支持读取页面结构、选区、描边、圆角和效果；创建页面、Frame、矩形、椭圆、可编辑文字和组件；修改位置、尺寸、填色、描边、原生效果、文字、字体及基础自动布局；复制和删除普通节点；选择定位；导出 PNG / SVG。
 
 **顶层文件仍需在 Figma 中手动新建，然后运行插件生成内容。** 插件不能后台打开任意云端文件、突破编辑权限或解除套餐页面数限制。本版本也没有图片上传、变量系统、组件变体和原型连线工具。
 
@@ -111,7 +113,9 @@ codex mcp add figma-local-bridge -- node "$PWD\server\mcp.mjs"
 
 颜色使用 Figma 原生格式，如 `fills: [{"type":"SOLID","color":{"r":0.2,"g":0.4,"b":1}}]`。尺寸为画布像素，颜色通道为 0–1。字体示例为 `{"family":"Inter","style":"Bold"}`；先查询字体，再使用可用的 family/style。完整卡片操作见 `examples/card.json`。
 
-支持的 props：name、x、y、width、height、fills、strokes、strokeWeight、cornerRadius、opacity、visible、locked、rotation、characters、fontName、fontSize、textAlignHorizontal、textAutoResize、layoutMode、itemSpacing、paddingTop、paddingBottom、paddingLeft、paddingRight、primaryAxisSizingMode、counterAxisSizingMode、primaryAxisAlignItems、counterAxisAlignItems、clipsContent。具体属性是否适用于节点，由插件与 Figma API 检查。更新文字会先加载字体。
+原生玻璃示例：`effects: [{"type":"GLASS","visible":true,"radius":16,"refraction":0.25,"depth":41,"lightAngle":-45,"lightIntensity":0.8,"dispersion":0.16}]`。这是 Figma 效果面板中的玻璃效果，不是渐变填充。
+
+支持的 props：name、x、y、width、height、fills、strokes、strokeWeight、cornerRadius、effects、opacity、visible、locked、rotation、characters、fontName、fontSize、textAlignHorizontal、textAutoResize、layoutMode、itemSpacing、paddingTop、paddingBottom、paddingLeft、paddingRight、primaryAxisSizingMode、counterAxisSizingMode、primaryAxisAlignItems、counterAxisAlignItems、clipsContent。具体属性是否适用于节点，由插件与 Figma API 检查。更新文字会先加载字体。
 
 ## 执行语义
 
