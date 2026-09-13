@@ -1,5 +1,15 @@
 # 验证记录
 
+## v1.0.5 MCP 风险注解与逐工具往返
+
+日期：2026-09-13。
+
+六个 MCP 工具均显式提供 `readOnlyHint`、`destructiveHint`、`idempotentHint` 和 `openWorldHint`。状态、文档读取、导出、字体查询和任务查询标记为只读；`figma_local_apply` 支持更新和删除，因此按最保守行为标记为可破坏且不可幂等。所有工具只接触本机已配对的 Figma 会话，标记为非开放世界。
+
+stdio 集成测试通过 `tools/list` 检查每个工具的四项布尔注解，并逐个调用 `figma_local_status`、`figma_local_document`、`figma_local_apply`、`figma_local_export`、`figma_local_fonts` 与 `figma_local_job`。除状态和任务查询直接返回外，其余工具都经过真实 MCP 子进程、本机 HTTP broker、模拟插件轮询、结果上传和 MCP 响应回传。该测试验证协议路径，但模拟插件仍不等于真实 Figma 客户端。
+
+`npm test`：12 项通过，0 失败；`node --check server/mcp.mjs` 与 `node --check tests/bridge.test.mjs` 通过。
+
 日期：2026-09-08。交付形态：本地开发版源码与 ZIP，无第三方运行依赖。
 
 ## v1.0.1 修复验证

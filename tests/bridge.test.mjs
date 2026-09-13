@@ -76,14 +76,37 @@ test('real stdio MCP round trip through HTTP broker to a simulated plugin',async
     pending.set(reqId,value=>{clearTimeout(timer);resolve(value);});
     child.stdin.write(JSON.stringify({jsonrpc:'2.0',id:reqId,method,params})+'\n');
   });
-  assert.equal((await rpc('initialize',{protocolVersion:'2025-06-18'})).result.serverInfo.name,'figma-local-bridge');
-  assert.equal((await rpc('tools/list',{})).result.tools.length,6);
+  const initialized=(await rpc('initialize',{protocolVersion:'2025-06-18'})).result;
+  assert.deepEqual(initialized.serverInfo,{name:'figma-local-bridge',version:'1.0.5'});
+  const listed=(await rpc('tools/list',{})).result.tools;
+  assert.equal(listed.length,6);
+  const readOnly={readOnlyHint:true,destructiveHint:false,idempotentHint:true,openWorldHint:false};
+  for (const tool of listed) {
+    assert.equal(Object.keys(tool.annotations).length,4);
+    assert.deepEqual(tool.annotations,tool.name==='figma_local_apply'
+      ? {readOnlyHint:false,destructiveHint:true,idempotentHint:false,openWorldHint:false}
+      : readOnly);
+  }
   assert.equal(JSON.parse((await rpc('tools/call',{name:'figma_local_status',arguments:{}})).result.content[0].text).sessions.length,1);
-  const response=rpc('tools/call',{name:'figma_local_document',arguments:{sessionId:s.sessionId}});
-  let job;
-  for(let i=0;i<50;i++){job=(await b.post('/poll',{},s.sessionToken)).data.job;if(job)break;await new Promise(r=>setTimeout(r,20));}
-  assert.equal(job.action,'document');
-  await b.post('/result',{id:job.id,result:{fileName:'Test file'}},s.sessionToken);
-  assert.equal(JSON.parse((await response).result.content[0].text).fileName,'Test file');
+  const roundTrip=async(name,args,expectedAction,result)=>{
+    const response=rpc('tools/call',{name,arguments:args});
+    let job;
+    for(let i=0;i<50;i++){job=(await b.post('/poll',{},s.sessionToken)).data.job;if(job)break;await new Promise(r=>setTimeout(r,20));}
+    assert.ok(job,`${name} did not reach the simulated plugin`);
+    assert.equal(job.action,expectedAction);
+    await b.post('/result',{id:job.id,result},s.sessionToken);
+    return {job,response:await response};
+  };
+  const document=await roundTrip('figma_local_document',{sessionId:s.sessionId},'document',{fileName:'Test file'});
+  assert.equal(JSON.parse(document.response.result.content[0].text).fileName,'Test file');
+  const apply=await roundTrip('figma_local_apply',{sessionId:s.sessionId,requestId:'mcp-round-trip-apply',operations:[{op:'select',nodeIds:[]}]},'apply',{ok:true,completed:1});
+  assert.equal(JSON.parse(apply.response.result.content[0].text).completed,1);
+  const exported=await roundTrip('figma_local_export',{sessionId:s.sessionId,nodeId:'1:2',format:'PNG'},'export',{format:'PNG',data:'aW1hZ2U='});
+  assert.deepEqual(exported.response.result.content,[{type:'image',data:'aW1hZ2U=',mimeType:'image/png'}]);
+  const fonts=await roundTrip('figma_local_fonts',{sessionId:s.sessionId,query:'Inter'},'fonts',{fonts:[{family:'Inter',style:'Regular'}]});
+  assert.equal(JSON.parse(fonts.response.result.content[0].text).fonts[0].family,'Inter');
+  const jobState=JSON.parse((await rpc('tools/call',{name:'figma_local_job',arguments:{jobId:apply.job.id}})).result.content[0].text);
+  assert.equal(jobState.state,'done');
+  assert.equal(jobState.result.completed,1);
   assert.equal((await rpc('tools/call',{name:'no_such_tool'})).result.isError,true);
 });

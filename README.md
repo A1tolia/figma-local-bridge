@@ -7,6 +7,8 @@
 [![CI](https://github.com/A1tolia/figma-local-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/A1tolia/figma-local-bridge/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+**v1.0.5 更新**：六个 MCP 工具现在完整声明只读、破坏性、幂等性和开放世界风险提示；自动测试逐个通过真实 stdio MCP、HTTP broker 与模拟 Figma 插件完成往返，避免工具只被枚举但没有实际调用覆盖。
+
 **v1.0.4 更新**：`figma_local_document` 现在返回描边、圆角和效果信息；`figma_local_apply` 新增 `effects` 写入，并校验 Figma 原生 `GLASS` 效果的光照、折射、深度、色散与半径参数。
 
 **v1.0.3 更新**：增加安全区适配所需的固定/自动布局定位、伸缩、约束和滚动方向属性，并在文档读取结果中返回这些布局信息。
